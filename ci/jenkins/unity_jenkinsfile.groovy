@@ -154,7 +154,7 @@ def should_skip_ci(pr_number) {
 cancel_previous_build()
 
 stage('Prepare') {
-  node('CPU-SMALL') {
+  node('CPU-SMALL-SPOT') {
     // When something is provided in ci_*_param, use it, otherwise default with ci_*
     ci_lint = params.ci_lint_param ?: ci_lint
     ci_cpu = params.ci_cpu_param ?: ci_cpu
@@ -181,7 +181,7 @@ stage('Prepare') {
 
 stage('Sanity Check') {
   timeout(time: max_time, unit: 'MINUTES') {
-    node('CPU-SMALL') {
+    node('CPU-SMALL-SPOT') {
       ws(per_exec_ws('tvm/sanity')) {
         init_git()
         skip_ci = should_skip_ci(env.CHANGE_ID)
@@ -272,7 +272,7 @@ stage('Build') {
 
 stage('Unittest') {
   parallel 'TIR: CPU': {
-    node('CPU') {
+    node('CPU-SMALL-SPOT') {
       ws(per_exec_ws('tvm/unittest/tir-cpu')) {
         init_git()
         unpack_lib('cpu', tvm_lib)
@@ -281,7 +281,7 @@ stage('Unittest') {
     }
   },
   'TIR: GPU': {
-    node('GPU') {
+    node('GPU-SPOT') {
       ws(per_exec_ws('tvm/unittest/tir-gpu')) {
         init_git()
         unpack_lib('gpu', tvm_lib_gpu)
@@ -290,7 +290,7 @@ stage('Unittest') {
     }
   },
   'Relax: CPU': {
-    node('CPU') {
+    node('CPU-SMALL-SPOT') {
       ws(per_exec_ws('tvm/unittest/relax-cpu')) {
         init_git()
         unpack_lib('cpu', tvm_lib)
@@ -299,7 +299,7 @@ stage('Unittest') {
     }
   },
   'Relax: GPU': {
-    node('GPU') {
+    node('GPU-SPOT') {
       ws(per_exec_ws('tvm/unittest/relax-gpu')) {
         init_git()
         unpack_lib('gpu', tvm_lib_gpu)
