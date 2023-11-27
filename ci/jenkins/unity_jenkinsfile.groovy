@@ -153,32 +153,31 @@ def should_skip_ci(pr_number) {
 
 cancel_previous_build()
 
-def lint() {
-  stage('Prepare') {
-    node('CPU-SMALL') {
-      // When something is provided in ci_*_param, use it, otherwise default with ci_*
-      ci_lint = params.ci_lint_param ?: ci_lint
-      ci_cpu = params.ci_cpu_param ?: ci_cpu
-      ci_gpu = params.ci_gpu_param ?: ci_gpu
-      ci_wasm = params.ci_wasm_param ?: ci_wasm
-      ci_i386 = params.ci_i386_param ?: ci_i386
-      ci_qemu = params.ci_qemu_param ?: ci_qemu
-      ci_arm = params.ci_arm_param ?: ci_arm
-      ci_hexagon = params.ci_hexagon_param ?: ci_hexagon
+stage('Prepare') {
+  node('CPU-SMALL') {
+    // When something is provided in ci_*_param, use it, otherwise default with ci_*
+    ci_lint = params.ci_lint_param ?: ci_lint
+    ci_cpu = params.ci_cpu_param ?: ci_cpu
+    ci_gpu = params.ci_gpu_param ?: ci_gpu
+    ci_wasm = params.ci_wasm_param ?: ci_wasm
+    ci_i386 = params.ci_i386_param ?: ci_i386
+    ci_qemu = params.ci_qemu_param ?: ci_qemu
+    ci_arm = params.ci_arm_param ?: ci_arm
+    ci_hexagon = params.ci_hexagon_param ?: ci_hexagon
 
-      sh (script: """
-        echo "Docker images being used in this build:"
-        echo " ci_lint = ${ci_lint}"
-        echo " ci_cpu  = ${ci_cpu}"
-        echo " ci_gpu  = ${ci_gpu}"
-        echo " ci_wasm = ${ci_wasm}"
-        echo " ci_i386 = ${ci_i386}"
-        echo " ci_qemu = ${ci_qemu}"
-        echo " ci_arm  = ${ci_arm}"
-        echo " ci_hexagon  = ${ci_hexagon}"
-      """, label: 'Docker image names')
-    }
+    sh (script: """
+      echo "Docker images being used in this build:"
+      echo " ci_lint = ${ci_lint}"
+      echo " ci_cpu  = ${ci_cpu}"
+      echo " ci_gpu  = ${ci_gpu}"
+      echo " ci_wasm = ${ci_wasm}"
+      echo " ci_i386 = ${ci_i386}"
+      echo " ci_qemu = ${ci_qemu}"
+      echo " ci_arm  = ${ci_arm}"
+      echo " ci_hexagon  = ${ci_hexagon}"
+    """, label: 'Docker image names')
   }
+}
 
 stage('Sanity Check') {
   timeout(time: max_time, unit: 'MINUTES') {
@@ -199,8 +198,6 @@ stage('Sanity Check') {
     }
   }
 }
-
-lint()
 
 // ********************** BUILD Stage **********************
 
@@ -275,39 +272,39 @@ stage('Build') {
 
 stage('Unittest') {
   parallel 'TIR: CPU': {
-      node('CPU') {
-        ws(per_exec_ws('tvm/unittest/tir-cpu')) {
-          init_git()
-          unpack_lib('cpu', tvm_lib)
-          sh "${docker_run} ${ci_cpu} ./tests/scripts/unity/task_python_tir.sh"
-        }
-      }
-    },
-    'TIR: GPU': {
-      node('GPU') {
-        ws(per_exec_ws('tvm/unittest/tir-gpu')) {
-          init_git()
-          unpack_lib('gpu', tvm_lib_gpu)
-          sh "${docker_run} ${ci_gpu} ./tests/scripts/unity/task_python_tir_gpuonly.sh"
-        }
-      }
-    },
-    'Relax: CPU': {
-      node('CPU') {
-        ws(per_exec_ws('tvm/unittest/relax-cpu')) {
-          init_git()
-          unpack_lib('cpu', tvm_lib)
-          sh "${docker_run} ${ci_cpu} ./tests/scripts/unity/task_python_relax.sh"
-        }
-      }
-    },
-    'Relax: GPU': {
-      node('GPU') {
-        ws(per_exec_ws('tvm/unittest/relax-gpu')) {
-          init_git()
-          unpack_lib('gpu', tvm_lib_gpu)
-          sh "${docker_run} ${ci_gpu} ./tests/scripts/unity/task_python_relax_gpuonly.sh"
-        }
+    node('CPU') {
+      ws(per_exec_ws('tvm/unittest/tir-cpu')) {
+        init_git()
+        unpack_lib('cpu', tvm_lib)
+        sh "${docker_run} ${ci_cpu} ./tests/scripts/unity/task_python_tir.sh"
       }
     }
+  },
+  'TIR: GPU': {
+    node('GPU') {
+      ws(per_exec_ws('tvm/unittest/tir-gpu')) {
+        init_git()
+        unpack_lib('gpu', tvm_lib_gpu)
+        sh "${docker_run} ${ci_gpu} ./tests/scripts/unity/task_python_tir_gpuonly.sh"
+      }
+    }
+  },
+  'Relax: CPU': {
+    node('CPU') {
+      ws(per_exec_ws('tvm/unittest/relax-cpu')) {
+        init_git()
+        unpack_lib('cpu', tvm_lib)
+        sh "${docker_run} ${ci_cpu} ./tests/scripts/unity/task_python_relax.sh"
+      }
+    }
+  },
+  'Relax: GPU': {
+    node('GPU') {
+      ws(per_exec_ws('tvm/unittest/relax-gpu')) {
+        init_git()
+        unpack_lib('gpu', tvm_lib_gpu)
+        sh "${docker_run} ${ci_gpu} ./tests/scripts/unity/task_python_relax_gpuonly.sh"
+      }
+    }
+  }
 }
