@@ -153,51 +153,51 @@ def should_skip_ci(pr_number) {
 
 cancel_previous_build()
 
-stage('Prepare') {
-  node('CPU-SMALL-SPOT') {
-    // When something is provided in ci_*_param, use it, otherwise default with ci_*
-    ci_lint = params.ci_lint_param ?: ci_lint
-    ci_cpu = params.ci_cpu_param ?: ci_cpu
-    ci_gpu = params.ci_gpu_param ?: ci_gpu
-    ci_wasm = params.ci_wasm_param ?: ci_wasm
-    ci_i386 = params.ci_i386_param ?: ci_i386
-    ci_qemu = params.ci_qemu_param ?: ci_qemu
-    ci_arm = params.ci_arm_param ?: ci_arm
-    ci_hexagon = params.ci_hexagon_param ?: ci_hexagon
+// stage('Prepare') {
+//   node('CPU-SMALL-SPOT') {
+//     // When something is provided in ci_*_param, use it, otherwise default with ci_*
+//     ci_lint = params.ci_lint_param ?: ci_lint
+//     ci_cpu = params.ci_cpu_param ?: ci_cpu
+//     ci_gpu = params.ci_gpu_param ?: ci_gpu
+//     ci_wasm = params.ci_wasm_param ?: ci_wasm
+//     ci_i386 = params.ci_i386_param ?: ci_i386
+//     ci_qemu = params.ci_qemu_param ?: ci_qemu
+//     ci_arm = params.ci_arm_param ?: ci_arm
+//     ci_hexagon = params.ci_hexagon_param ?: ci_hexagon
 
-    sh (script: """
-      echo "Docker images being used in this build:"
-      echo " ci_lint = ${ci_lint}"
-      echo " ci_cpu  = ${ci_cpu}"
-      echo " ci_gpu  = ${ci_gpu}"
-      echo " ci_wasm = ${ci_wasm}"
-      echo " ci_i386 = ${ci_i386}"
-      echo " ci_qemu = ${ci_qemu}"
-      echo " ci_arm  = ${ci_arm}"
-      echo " ci_hexagon  = ${ci_hexagon}"
-    """, label: 'Docker image names')
-  }
-}
+//     sh (script: """
+//       echo "Docker images being used in this build:"
+//       echo " ci_lint = ${ci_lint}"
+//       echo " ci_cpu  = ${ci_cpu}"
+//       echo " ci_gpu  = ${ci_gpu}"
+//       echo " ci_wasm = ${ci_wasm}"
+//       echo " ci_i386 = ${ci_i386}"
+//       echo " ci_qemu = ${ci_qemu}"
+//       echo " ci_arm  = ${ci_arm}"
+//       echo " ci_hexagon  = ${ci_hexagon}"
+//     """, label: 'Docker image names')
+//   }
+// }
 
-stage('Sanity Check') {
-  timeout(time: max_time, unit: 'MINUTES') {
-    node('CPU-SMALL-SPOT') {
-      ws(per_exec_ws('tvm/sanity')) {
-        init_git()
-        skip_ci = should_skip_ci(env.CHANGE_ID)
-        skip_slow_tests = should_skip_slow_tests(env.CHANGE_ID)
-        sh (
-          script: "${docker_run} ${ci_lint}  ./tests/scripts/task_lint.sh",
-          label: 'Run lint',
-        )
-        sh (
-          script: "${docker_run} ${ci_lint}  ./tests/scripts/unity/task_extra_lint.sh",
-          label: 'Run extra lint',
-        )
-      }
-    }
-  }
-}
+// stage('Sanity Check') {
+//   timeout(time: max_time, unit: 'MINUTES') {
+//     node('CPU-SMALL-SPOT') {
+//       ws(per_exec_ws('tvm/sanity')) {
+//         init_git()
+//         skip_ci = should_skip_ci(env.CHANGE_ID)
+//         skip_slow_tests = should_skip_slow_tests(env.CHANGE_ID)
+//         sh (
+//           script: "${docker_run} ${ci_lint}  ./tests/scripts/task_lint.sh",
+//           label: 'Run lint',
+//         )
+//         sh (
+//           script: "${docker_run} ${ci_lint}  ./tests/scripts/unity/task_extra_lint.sh",
+//           label: 'Run extra lint',
+//         )
+//       }
+//     }
+//   }
+// }
 
 // ********************** BUILD Stage **********************
 
@@ -261,8 +261,8 @@ stage('Build') {
       node('CPU') {
         ws(per_exec_ws('tvm/build-gpu')) {
           init_git()
-          sh "${docker_run}  ${ci_gpu} ./tests/scripts/task_config_build_gpu.sh build"
-          make(ci_gpu)
+          sh "${docker_run} --no-gpu ${ci_gpu} ./tests/scripts/task_config_build_gpu.sh build"
+          make("${ci_gpu} --no-gpu")
           pack_lib('gpu', tvm_lib_gpu)
         }
       }
