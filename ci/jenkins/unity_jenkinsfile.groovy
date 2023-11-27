@@ -41,6 +41,8 @@ ci_hexagon = 'tlcpackstaging/ci_hexagon:20230504-142417-4d37a0a0'
 
 tvm_lib = 'build/libtvm.so, build/libtvm_runtime.so, build/config.cmake'
 tvm_lib_gpu = tvm_lib + ", build/libfpA_intB_gemm.so, build/libflash_attn.so"
+tvm_ext_lib_gpu = "build/3rdparty/libflash_attn/src/libflash_attn.so, build/3rdparty/cutlass_fpA_intB_gemm/cutlass_kernels/libfpA_intB_gemm.so"
+tvm_lib_gpu = tvm_lib_gpu + ", " + tvm_ext_lib_gpu
 
 def pack_lib(name, libs) {
   sh """
@@ -274,8 +276,6 @@ stage('Build') {
           init_git()
           sh "${docker_run} --no-gpu ${ci_gpu} ./tests/scripts/task_config_build_gpu.sh build"
           make("${ci_gpu} --no-gpu")
-          copy_build_artifacts('./build/3rdparty/libflash_attn/src/libflash_attn.so', './build/libflash_attn.so')
-          copy_build_artifacts('./build/3rdparty/cutlass_fpA_intB_gemm/cutlass_kernels/libfpA_intB_gemm.so', './build/libfpA_intB_gemm.so')
           pack_lib('gpu', tvm_lib_gpu)
         }
       }
