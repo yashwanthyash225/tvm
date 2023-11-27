@@ -309,5 +309,5 @@ stage('Unittest') {
           sh "${docker_run} ${ci_gpu} ./tests/scripts/unity/task_python_relax_gpuonly.sh"
         }
       }
-    },
+    }
 }
