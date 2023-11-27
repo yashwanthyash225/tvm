@@ -26,7 +26,6 @@
 // This file is manually updated to maintain unity branch specific builds.
 // Please do not send this file to main
 
-
 import org.jenkinsci.plugins.pipeline.modeldefinition.Utils
 
 // NOTE: these lines are scanned by docker/dev_common.sh. Please update the regex as needed. -->
@@ -39,6 +38,25 @@ ci_qemu = 'tlcpack/ci-qemu:v0.11'
 ci_arm = 'tlcpack/ci-arm:v0.08'
 ci_hexagon = 'tlcpackstaging/ci_hexagon:20230504-142417-4d37a0a0'
 // <--- End of regex-scanned config.
+
+tvm_lib = 'build/libtvm.so, build/libtvm_runtime.so, build/config.cmake'
+tvm_lib_gpu = tvm_lib + ", build/libfpA_intB_gemm.so, build/libflash_attn.so"
+
+def pack_lib(name, libs) {
+  sh """
+     echo "Packing ${libs} into ${name}"
+     echo ${libs} | sed -e 's/,/ /g' | xargs md5sum
+     """
+  stash includes: libs, name: name
+}
+
+def unpack_lib(name, libs) {
+  unstash name
+  sh """
+     echo "Unpacked ${libs} from ${name}"
+     echo ${libs} | sed -e 's/,/ /g' | xargs md5sum
+     """
+}
 
 // Parameters to allow overriding (in Jenkins UI), the images
 // to be used by a given build. When provided, they take precedence
@@ -136,42 +154,37 @@ def should_skip_ci(pr_number) {
 cancel_previous_build()
 
 def lint() {
-stage('Prepare') {
-  node('CPU-SMALL') {
-    // When something is provided in ci_*_param, use it, otherwise default with ci_*
-    ci_lint = params.ci_lint_param ?: ci_lint
-    ci_cpu = params.ci_cpu_param ?: ci_cpu
-    ci_gpu = params.ci_gpu_param ?: ci_gpu
-    ci_wasm = params.ci_wasm_param ?: ci_wasm
-    ci_i386 = params.ci_i386_param ?: ci_i386
-    ci_qemu = params.ci_qemu_param ?: ci_qemu
-    ci_arm = params.ci_arm_param ?: ci_arm
-    ci_hexagon = params.ci_hexagon_param ?: ci_hexagon
+  stage('Prepare') {
+    node('CPU-SMALL') {
+      // When something is provided in ci_*_param, use it, otherwise default with ci_*
+      ci_lint = params.ci_lint_param ?: ci_lint
+      ci_cpu = params.ci_cpu_param ?: ci_cpu
+      ci_gpu = params.ci_gpu_param ?: ci_gpu
+      ci_wasm = params.ci_wasm_param ?: ci_wasm
+      ci_i386 = params.ci_i386_param ?: ci_i386
+      ci_qemu = params.ci_qemu_param ?: ci_qemu
+      ci_arm = params.ci_arm_param ?: ci_arm
+      ci_hexagon = params.ci_hexagon_param ?: ci_hexagon
 
-    sh (script: """
-      echo "Docker images being used in this build:"
-      echo " ci_lint = ${ci_lint}"
-      echo " ci_cpu  = ${ci_cpu}"
-      echo " ci_gpu  = ${ci_gpu}"
-      echo " ci_wasm = ${ci_wasm}"
-      echo " ci_i386 = ${ci_i386}"
-      echo " ci_qemu = ${ci_qemu}"
-      echo " ci_arm  = ${ci_arm}"
-      echo " ci_hexagon  = ${ci_hexagon}"
-    """, label: 'Docker image names')
+      sh (script: """
+        echo "Docker images being used in this build:"
+        echo " ci_lint = ${ci_lint}"
+        echo " ci_cpu  = ${ci_cpu}"
+        echo " ci_gpu  = ${ci_gpu}"
+        echo " ci_wasm = ${ci_wasm}"
+        echo " ci_i386 = ${ci_i386}"
+        echo " ci_qemu = ${ci_qemu}"
+        echo " ci_arm  = ${ci_arm}"
+        echo " ci_hexagon  = ${ci_hexagon}"
+      """, label: 'Docker image names')
+    }
   }
-}
 
 stage('Sanity Check') {
   timeout(time: max_time, unit: 'MINUTES') {
     node('CPU-SMALL') {
       ws(per_exec_ws('tvm/sanity')) {
         init_git()
-        is_docs_only_build = sh (
-          returnStatus: true,
-          script: './tests/scripts/git_change_docs.sh',
-          label: 'Check for docs only changes',
-        )
         skip_ci = should_skip_ci(env.CHANGE_ID)
         skip_slow_tests = should_skip_slow_tests(env.CHANGE_ID)
         sh (
@@ -186,152 +199,115 @@ stage('Sanity Check') {
     }
   }
 }
-}
 
 lint()
+
+// ********************** BUILD Stage **********************
 
 // Run make. First try to do an incremental make from a previous workspace in hope to
 // accelerate the compilation. If something is wrong, clean the workspace and then
 // build from scratch.
-def make(docker_type, path, make_flag) {
+def make(docker_type) {
   timeout(time: max_time, unit: 'MINUTES') {
     try {
-      cmake_build(docker_type, path, make_flag)
-      // always run cpp test when build
-      // sh "${docker_run} ${docker_type} ./tests/scripts/task_cpp_unittest.sh"
+      cmake_build(docker_type)
     } catch (hudson.AbortException ae) {
       // script exited due to user abort, directly throw instead of retry
       if (ae.getMessage().contains('script returned exit code 143')) {
         throw ae
       }
       echo 'Incremental compilation failed. Fall back to build from scratch'
-      sh (
-        script: "${docker_run} ${docker_type} ./tests/scripts/task_clean.sh ${path}",
+      sh(
+        script: "${docker_run} ${docker_type} ./tests/scripts/task_clean.sh build",
         label: 'Clear old cmake workspace',
       )
-      cmake_build(docker_type, path, make_flag)
-      cpp_unittest(docker_type)
+      cmake_build(docker_type)
+      // cpp_unittest(docker_type)
     }
   }
 }
 
 // Specifications to Jenkins "stash" command for use with various pack_ and unpack_ functions.
-tvm_runtime = 'build/libtvm_runtime.so, build/config.cmake'  // use libtvm_runtime.so.
-tvm_lib = 'build/libtvm.so, ' + tvm_runtime  // use libtvm.so to run the full compiler.
+tvm_runtime = 'build/libtvm_runtime.so, build/config.cmake' // use libtvm_runtime.so.
+tvm_lib = 'build/libtvm.so, ' + tvm_runtime // use libtvm.so to run the full compiler.
 // LLVM upstream lib
 tvm_multilib = 'build/libtvm.so, ' +
-               'build/libvta_fsim.so, ' +
-               tvm_runtime
+  'build/libvta_fsim.so, ' +
+  tvm_runtime
 
-tvm_multilib_tsim = 'build/libvta_tsim.so, ' +
-                    tvm_multilib
-
-microtvm_tar_gz = 'build/microtvm_template_projects.tar.gz'
-
-// pack libraries for later use
-def pack_lib(name, libs) {
-  sh (script: """
-     echo "Packing ${libs} into ${name}"
-     echo ${libs} | sed -e 's/,/ /g' | xargs md5sum
-     """, label: 'Stash libraries and show md5')
-  stash includes: libs, name: name
-}
-
-// unpack libraries saved before
-def unpack_lib(name, libs) {
-  unstash name
-  sh (script: """
-     echo "Unpacked ${libs} from ${name}"
-     echo ${libs} | sed -e 's/,/ /g' | xargs md5sum
-     """, label: 'Unstash libraries and show md5')
-}
-
-// compress microtvm template projects and pack the tar.
-def pack_microtvm_template_projects(name) {
+def cmake_build(image) {
   sh(
-    script: 'cd build && tar -czvf microtvm_template_projects.tar.gz microtvm_template_projects/',
-    label: 'Compress microtvm_template_projects'
-  )
-  pack_lib(name + '-microtvm-libs', microtvm_tar_gz)
-}
-
-def unpack_microtvm_template_projects(name) {
-  unpack_lib(name + '-microtvm-libs', microtvm_tar_gz)
-  sh(
-    script: 'cd build && tar -xzvf microtvm_template_projects.tar.gz',
-    label: 'Unpack microtvm_template_projects'
-  )
-}
-
-def ci_setup(image) {
-  sh (
-    script: "${docker_run} ${image} ./tests/scripts/task_ci_setup.sh",
-    label: 'Set up CI environment',
-  )
-}
-
-def python_unittest(image) {
-  sh (
-    script: "${docker_run} ${image} ./tests/scripts/task_python_unittest.sh",
-    label: 'Run Python unit tests',
-  )
-}
-
-def fsim_test(image) {
-  sh (
-    script: "${docker_run} ${image} ./tests/scripts/task_python_vta_fsim.sh",
-    label: 'Run VTA tests in FSIM',
-  )
-}
-
-def cmake_build(image, path, make_flag) {
-  sh (
     script: "${docker_run} ${image} ./tests/scripts/task_build.py --sccache-bucket tvm-sccache-prod",
     label: 'Run cmake build',
   )
 }
 
 def cpp_unittest(image) {
-  sh (
+  sh(
     script: "${docker_run} ${image} ./tests/scripts/task_cpp_unittest.sh",
     label: 'Build and run C++ tests',
   )
 }
 
-def add_hexagon_permissions() {
-  sh(
-    script: 'find build/hexagon_api_output -type f | xargs chmod +x',
-    label: 'Add execute permissions for hexagon files',
-  )
-}
-
-// NOTE: limit tests to relax folder for now to allow us to skip some of the tests
-// that are mostly related to changes in main.
-// This helps to speedup CI time and reduce CI cost.
-stage('Build and Test') {
-  if (is_docs_only_build != 1) {
-    parallel 'BUILD: GPU': {
-      node('GPU') {
+stage('Build') {
+  parallel 'CPU': {
+      node('CPU') {
+        ws(per_exec_ws('tvm/build-cpu')) {
+          init_git()
+          sh "${docker_run} ${ci_cpu} ./tests/scripts/task_config_build_cpu.sh build"
+          make(ci_cpu)
+          pack_lib('cpu', tvm_lib)
+        }
+      }
+    },
+    'GPU': {
+      node('CPU') {
         ws(per_exec_ws('tvm/build-gpu')) {
           init_git()
           sh "${docker_run} ${ci_gpu} nvidia-smi"
           sh "${docker_run}  ${ci_gpu} ./tests/scripts/task_config_build_gpu.sh build"
-          make("${ci_gpu}", 'build', '-j2')
+          make(ci_gpu)
+          pack_lib('gpu', tvm_lib_gpu)
+        }
+      }
+    }
+}
+
+stage('Unittest') {
+  parallel 'TIR: CPU': {
+      node('CPU') {
+        ws(per_exec_ws('tvm/unittest/tir-cpu')) {
+          init_git()
+          unpack_lib('cpu', tvm_lib)
+          sh "${docker_run} ${ci_cpu} ./tests/scripts/unity/task_python_tir.sh"
+        }
+      }
+    },
+    'TIR: GPU': {
+      node('GPU') {
+        ws(per_exec_ws('tvm/unittest/tir-gpu')) {
+          init_git()
+          unpack_lib('gpu', tvm_lib_gpu)
+          sh "${docker_run} ${ci_gpu} ./tests/scripts/unity/task_python_tir_gpuonly.sh"
+        }
+      }
+    },
+    'Relax: CPU': {
+      node('CPU') {
+        ws(per_exec_ws('tvm/unittest/relax-cpu')) {
+          init_git()
+          unpack_lib('cpu', tvm_lib)
+          sh "${docker_run} ${ci_cpu} ./tests/scripts/unity/task_python_relax.sh"
+        }
+      }
+    },
+    'Relax: GPU': {
+      node('GPU') {
+        ws(per_exec_ws('tvm/unittest/relax-gpu')) {
+          init_git()
+          unpack_lib('gpu', tvm_lib_gpu)
           sh "${docker_run} ${ci_gpu} ./tests/scripts/unity/task_python_relax_gpuonly.sh"
         }
       }
     },
-    'BUILD: CPU': {
-      node('CPU-SMALL') {
-        ws(per_exec_ws('tvm/build-cpu')) {
-          init_git()
-          sh "${docker_run} ${ci_cpu} ./tests/scripts/task_config_build_cpu.sh build"
-          make(ci_cpu, 'build', '-j2')
-          sh "${docker_run} ${ci_cpu} ./tests/scripts/unity/task_python_relax.sh"
-        }
-      }
-    }
-  } else {
-    Utils.markStageSkippedForConditional('BUILD: CPU')
-  }
 }
