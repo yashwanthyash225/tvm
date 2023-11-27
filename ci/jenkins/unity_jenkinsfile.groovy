@@ -246,6 +246,17 @@ def cpp_unittest(image) {
   )
 }
 
+def copy_build_artifacts(src, dst) {
+  sh(
+    script: """
+      if [ -f ${src} ]; then
+        cp ${src} ${dst}
+      fi
+    """,
+    label: 'Copy build artifacts',
+  )
+}
+
 stage('Build') {
   parallel 'CPU': {
       node('CPU') {
@@ -263,6 +274,8 @@ stage('Build') {
           init_git()
           sh "${docker_run} --no-gpu ${ci_gpu} ./tests/scripts/task_config_build_gpu.sh build"
           make("${ci_gpu} --no-gpu")
+          copy_build_artifacts('./build/3rdparty/libflash_attn/src/libflash_attn.so', './build/libflash_attn.so')
+          copy_build_artifacts('./build/3rdparty/cutlass_fpA_intB_gemm/cutlass_kernels/libfpA_intB_gemm.so', './build/libfpA_intB_gemm.so')
           pack_lib('gpu', tvm_lib_gpu)
         }
       }
