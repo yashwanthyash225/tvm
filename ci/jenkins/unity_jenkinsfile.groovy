@@ -40,7 +40,6 @@ ci_hexagon = 'tlcpackstaging/ci_hexagon:20230504-142417-4d37a0a0'
 // <--- End of regex-scanned config.
 
 tvm_lib = 'build/libtvm.so, build/libtvm_runtime.so, build/config.cmake'
-tvm_lib_gpu = tvm_lib + ", build/libfpA_intB_gemm.so, build/libflash_attn.so"
 tvm_ext_lib_gpu = "build/3rdparty/libflash_attn/src/libflash_attn.so, build/3rdparty/cutlass_fpA_intB_gemm/cutlass_kernels/libfpA_intB_gemm.so"
 tvm_lib_gpu = tvm_lib_gpu + ", " + tvm_ext_lib_gpu
 
