@@ -569,6 +569,7 @@ class IRApplyVisit : public StmtExprVisitor {
   }
 
   void VisitStmt(const Stmt& node) final {
+	VLOG(1) << "[Added new Logs] : ----------- VisitStmt ---------" << std::endl;
     if (visited_.count(node.get()) != 0) return;
     visited_.insert(node.get());
     StmtVisitor::VisitStmt(node);

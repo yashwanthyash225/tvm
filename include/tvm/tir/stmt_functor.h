@@ -70,7 +70,9 @@ class StmtFunctor<R(const Stmt& n, Args... args)> {
    * \param args Additional arguments.
    * \return The result of the call
    */
-  R operator()(const Stmt& n, Args... args) { return VisitStmt(n, std::forward<Args>(args)...); }
+  R operator()(const Stmt& n, Args... args) { 
+	VLOG(1) << "[Added new Logs] : ----------- VisitStmt ---------" << std::endl;
+	return VisitStmt(n, std::forward<Args>(args)...); }
   /*!
    * \brief The functor call.
    * \param n The stmt node.
@@ -78,6 +80,7 @@ class StmtFunctor<R(const Stmt& n, Args... args)> {
    * \return The result of the call
    */
   virtual R VisitStmt(const Stmt& n, Args... args) {
+	VLOG(1) << "[Added new Logs] : ----------- VisitStmt ---------" << std::endl;
     static FType vtable = InitVTable();
     return vtable(n, this, std::forward<Args>(args)...);
   }
@@ -185,6 +188,7 @@ class TVM_DLL StmtMutator : protected StmtFunctor<Stmt(const Stmt&)> {
    *       do mutator(std::move(stmt)) or when copy elison is triggered.
    */
   Stmt operator()(Stmt stmt) {
+	VLOG(1) << "[Added New Logs] : --------------- stmt functor h\n";
     allow_copy_on_write_ = true;
     return VisitStmt(stmt);
   }
@@ -234,6 +238,7 @@ class TVM_DLL StmtMutator : protected StmtFunctor<Stmt(const Stmt&)> {
    * \return The mutated results.
    */
   Stmt VisitStmt(const Stmt& stmt) override {
+	VLOG(1) << "[Added new Logs] : ----------- VisitStmt ---------" << std::endl;
     if (allow_copy_on_write_ && !stmt.unique()) {
       allow_copy_on_write_ = false;
       Stmt ret = StmtFunctor::VisitStmt(stmt);

@@ -66,6 +66,7 @@ Stmt WrapLayoutTransformationAttrs(const Stage& stage, Stmt body) {
 Stmt MakePipeline(const Stage& s, const std::unordered_map<IterVar, Range>& dom_map, Stmt consumer,
                   bool debug_keep_trivial_loop) {
   Stmt producer = s->op->BuildProvide(s, dom_map, debug_keep_trivial_loop);
+  VLOG(1) << "[Added New Logs] : ------- Stage op ----- " << s->op->name << std::endl;
   if (s->double_buffer) {
     producer = AttrStmt(s->op, tir::attr::double_buffer_scope, 1, producer);
   }
@@ -386,30 +387,40 @@ Stmt ScheduleOps(Schedule sch, Map<IterVar, Range> dom_map_, bool debug_keep_tri
     ICHECK(s->op.defined());
     // Remove grouping sugar, get the real attach spec.
     Stage attach_spec = s.GetAttachSpec();
+	VLOG(1) << "[Added New Logs] : ------------ schedule_ops cc \n" << body << std::endl;
 
     if (s->op.as<PlaceholderOpNode>()) {
+	 VLOG(1) << "[Added New Logs] : ------------ schedule_ops cc \n" << body << std::endl;
       // Placeholders don't need any realize/provide statements, but
       // may be annotated with set_physical_layout to indicate the
       // physical layout of an input, and must still have the
       // attribute given.
       body = WrapLayoutTransformationAttrs(s, std::move(body));
+	  VLOG(1) << "[Added New Logs] : ------------ schedule_ops cc \n" << body << std::endl;
     } else if (scan_init.count(s->op)) {
+		VLOG(1) << "[Added New Logs] : ------------ schedule_ops cc \n" << body << std::endl;
       ICHECK(body.defined());
       InjectScanStep mu(s, scan_init.at(s->op), dom_map, true, debug_keep_trivial_loop);
       body = mu(std::move(body));
       ICHECK(mu.found_attach) << "did not find attachment point for scan.init";
+	   VLOG(1) << "[Added New Logs] : ------------ schedule_ops cc \n" << body << std::endl;
     } else if (attach_spec->attach_type == kScanUpdate) {
+		 VLOG(1) << "[Added New Logs] : ------------ schedule_ops cc \n" << body << std::endl;
       // Handle scan update
       ICHECK(body.defined());
       InjectScanStep mu(s, attach_spec->attach_stage->op, dom_map, false, debug_keep_trivial_loop);
       body = mu(std::move(body));
       ICHECK(mu.found_attach) << "did not find attachment point for scan.update";
+	   VLOG(1) << "[Added New Logs] : ------------ schedule_ops cc \n" << body << std::endl;
     } else if (attach_spec->attach_type == kInlinedAlready) {
       // do nothing
     } else if (attach_spec->attach_type == kGroupRoot) {
+		 VLOG(1) << "[Added New Logs] : ------------ schedule_ops cc \n" << body << std::endl;
       ICHECK(!s->group.defined());
       body = MakePipeline(s, dom_map, body, debug_keep_trivial_loop);
+	   VLOG(1) << "[Added New Logs] : ------------ schedule_ops cc \n" << body << std::endl;
     } else {
+		 VLOG(1) << "[Added New Logs] : ------------ schedule_ops cc \n" << body << std::endl;
       ICHECK_EQ(attach_spec->attach_type, kScope);
       ICHECK(body.defined());
       InjectAttach mutator(s, attach_spec, dom_map, debug_keep_trivial_loop);
@@ -418,11 +429,13 @@ Stmt ScheduleOps(Schedule sch, Map<IterVar, Range> dom_map_, bool debug_keep_tri
           << "did not find attachment point for " << s << " in " << attach_spec->attach_stage->op
           << " x " << attach_spec->attach_ivar << ", body:\n"
           << body;
+		   VLOG(1) << "[Added New Logs] : ------------ schedule_ops cc \n" << body << std::endl;
     }
   }
 
   SchedulePostProc post_proc;
   post_proc.Init(sch);
+  VLOG(1) << "[Added New Logs] : ------------ schedule_ops cc \n" << body << std::endl;
   return post_proc(std::move(body));
 }
 

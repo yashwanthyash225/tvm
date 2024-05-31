@@ -281,7 +281,9 @@ Array<tvm::transform::Pass> CreatePassList(bool disable_loop_partition) {
 
 IRModule LowerWithPassList(IRModule mod, Array<tvm::transform::Pass> pass_list) {
   auto optimize = tvm::transform::Sequential(pass_list);
+  VLOG(1) << "[Added New Logs] : Before driver api cc----------\n" << mod << std::endl;
   mod = optimize(std::move(mod));
+  VLOG(1) << "[Added New Logs] : After -----------\n" << mod << std::endl;
   return mod;
 }
 
@@ -454,6 +456,7 @@ void CheckAndUpdateHostConsistency(Map<Target, IRModule>* targets, Target* host)
 runtime::Module TIRToRuntime(const Map<Target, IRModule>& inputs_arg,
                              const Target& target_host_arg) {
   CHECK(inputs_arg.size()) << "TIRToRuntime expects at least one IRModule as input.";
+  VLOG(1) << "[Added New Logs] Reached this Driver API cc -----------------------------";
   std::vector<runtime::Module> device_modules;
   Map<Target, IRModule> inputs = inputs_arg;
   Target target_host = target_host_arg;

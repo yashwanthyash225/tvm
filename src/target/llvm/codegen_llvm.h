@@ -617,6 +617,7 @@ inline int CodeGenLLVM::GetVectorNumElements(llvm::Value* vec) {
 template <typename IterType, typename ConvType>
 void CodeGenLLVM::AddFunctionsOrdered(IterType begin, IterType end, ConvType pfunc) {
   std::vector<std::tuple<GlobalVar, PrimFunc>> funcs;
+  VLOG(1) << "[Added New Logs] : Add FUnctions Ordered" << std::endl;
   for (auto it = begin; it != end; ++it) {
     auto [gvar, func] = *it;
     auto converted = pfunc(func);
@@ -630,6 +631,8 @@ void CodeGenLLVM::AddFunctionsOrdered(IterType begin, IterType end, ConvType pfu
     std::string name_b = std::get<std::string>(GetLinkage(gvar_b, func_b));
     return name_a < name_b;
   });
+
+  VLOG(1) << "[Added New Logs] : funcs size : " << funcs.size() << std::endl;
 
   for (const auto& [gvar, func] : funcs) {
     DeclareFunction(gvar, func);

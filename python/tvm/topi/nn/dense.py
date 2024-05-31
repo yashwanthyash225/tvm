@@ -291,7 +291,7 @@ def dense_pack(data, weight, bias=None, out_dtype=None):
     M, K = get_const_tuple(data.shape)  # batch, in_dim
     N, _, packw_bn = get_const_tuple(weight.shape)  # out_dim
     N = N * packw_bn
-
+     
     idxdiv = tvm.tir.indexdiv
     idxmod = tvm.tir.indexmod
     k = te.reduce_axis((0, K), name="k")

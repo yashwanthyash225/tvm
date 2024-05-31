@@ -252,7 +252,7 @@ def dense_pack(cfg, data, weight, bias=None, out_dtype=None):
             )
     else:
         packw = weight
-
+    print("--------------------------------- In dense_pack in dense.py -----------")
     idxdiv = tvm.tir.indexdiv
     idxmod = tvm.tir.indexmod
     k = te.reduce_axis((0, K), name="k")

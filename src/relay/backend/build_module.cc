@@ -436,6 +436,7 @@ class RelayBuildModule : public runtime::ModuleNode {
     ret_.params = executor_codegen_->GetParams();
 
     auto lowered_funcs = executor_codegen_->GetIRModule();
+	VLOG(1) << "[Added New Logs] lowered_funcs size : " << AsText(relay_module) << std::endl;
 
     // No need to build for external functions.
     Target ext_dev("ext_dev");

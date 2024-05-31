@@ -231,6 +231,8 @@ class GraphExecutorCodegen : public backend::MemoizedExprTranslator<std::vector<
       tec::UpdateFunctionMetadata(func, this->function_metadata_);
     })(mod);
 
+	VLOG(1) << "[Added New Logs] : lowered_mode ---- " << PrettyPrint(lowered_mod) << std::endl;
+
     Optional<backend::FunctionInfo> main_func_info =
         lowered_mod->GetAttr<backend::FunctionInfo>("main_func_info");
 

@@ -174,6 +174,7 @@ def select_implementation(op, attrs, inputs, out_type, target, use_autotvm=True)
     ret : tuple(relay.op.OpImplementation, List[tvm.te.Tensor])
         The best op implementation and the corresponding output tensors.
     """
+    logger.info("[Added New Logs] : --------- In python File")
     all_impls = get_valid_implementations(op, attrs, inputs, out_type, target)
     if len(all_impls) == 0:
         raise RuntimeError(f"No valid {op} implementations for {target}")

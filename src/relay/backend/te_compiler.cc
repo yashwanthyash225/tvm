@@ -183,6 +183,8 @@ class TECompilerImpl : public TECompilerNode {
 
       IRModule lowered_mod = lowered_func->cached_func->funcs;
 
+	  VLOG(1) << "[Added New Logs] : Lowered Module " << PrettyPrint(lowered_mod) << std::endl;
+
       // Annotate functions with their target and put them in the return module
       for (const auto& kv : lowered_mod->functions) {
         const GlobalVar& var = kv.first;
@@ -952,11 +954,14 @@ class LowerTensorExprMutator : public DeviceAwareExprMutator {
 };
 
 Pass LowerTensorExpr(TECompiler compiler, ProcessFn process_fn, CompilationConfig config) {
+	VLOG(1) << "[Added New Logs] : LowerTensor Expr ---------" << std::endl;
   runtime::TypedPackedFunc<Function(Function, IRModule, PassContext)> pass_func =
       [=](Function func, IRModule module, PassContext ctx) {
+		VLOG(1) << "[Added New Logs] : ------------- in pass_func" << std::endl;
         LowerTensorExprMutator lower_te(module, process_fn, config, compiler);
         return Downcast<Function>(lower_te.Mutate(func));
       };
+	  VLOG(1) << "[Added New Logs] : ----------after the pass func" << std::endl;
   return CreateFunctionPass(pass_func, 0, "LowerTensorExpr", {});
 }
 
@@ -1187,6 +1192,7 @@ void UpdateFunctionMetadata(BaseFunc func,
 IRModule LowerTE(const IRModule& module, const String& module_name, ProcessFn process_fn,
                  CompilationConfig config) {
   TECompiler compiler(module, module_name);
+  VLOG(1) << "------------IRModule LowerTE" << std::endl;
 
   // TODO(mbs): This is all unnecessarily convoluted. Better would be to accumulate the rewritten
   // module as we go (including rewritten Functions, lowered primitives, and runtime modules
@@ -1302,6 +1308,7 @@ Map<Target, IRModule> GetPerTargetModules(IRModule mod) {
 }
 
 Pass LowerTE(String module_name, CompilationConfig complilation_config, ProcessFn process_fn) {
+	VLOG(1) << "----------- Pass LowerTE" << std::endl;
   runtime::TypedPackedFunc<IRModule(IRModule, PassContext)> pass_func = [=](IRModule module,
                                                                             PassContext ctx) {
     return LowerTE(module, module_name, process_fn, complilation_config);
